@@ -528,6 +528,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.cache == True:
+        """
         # Download Omniglot Dataset
         if not os.path.isdir("./omniglot_resized"):
             gdd.download_file_from_google_drive(
@@ -535,6 +536,7 @@ if __name__ == '__main__':
                 dest_path="./omniglot_resized.zip",
                 unzip=True,
             )
+        """
         assert os.path.isdir("./omniglot_resized")
     else:
         main(args)

@@ -25,3 +25,4 @@ huggingface-hub==0.16.4
 transformers==4.31.0
 datasets==2.13.1
 numpy==1.25.1
+omniglot
