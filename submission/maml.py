@@ -158,57 +158,26 @@ class MAML:
         )
 
     def _inner_loop(self, images, labels, train):
-        """Computes the adapted network parameters via the MAML inner loop.
-
-        Args:
-            images (Tensor): task support set inputs
-                shape (num_images, channels, height, width)
-            labels (Tensor): task support set outputs
-                shape (num_images,)
-            train (bool): whether we are training or evaluating
-
-        Returns:
-            parameters (dict[str, Tensor]): adapted network parameters
-            accuracies (list[float]): support set accuracy over the course of
-                the inner loop, length num_inner_steps + 1
-            gradients(list[float]): gradients computed from auto.grad, just needed
-                for autograders, no need to use this value in your code and feel to replace
-                with underscore       
-        """
         accuracies = []
-        parameters = {
-            k: torch.clone(v)
-            for k, v in self._meta_parameters.items()
-        }
-        gradients = None
-        ### START CODE HERE ###
-        # TODO: finish implementing this method.
-        # This method computes the inner loop (adaptation) procedure
-        # over the course of _num_inner_steps steps for one
-        # task. It also scores the model along the way.
-        # Make sure to populate accuracies and update parameters.
-        # Use F.cross_entropy to compute classification losses.
-        # Use util.score to compute accuracies.
-        
+        parameters = {k: torch.clone(v) for k, v in self._meta_parameters.items()}
+        inner_lrs = {k: torch.clone(v) for k, v in self._inner_lrs.items()}
 
-        ### END CODE HERE ###
+        predictions = self._forward(images, parameters)
+        accuracies.append(util.score(predictions, labels))
+
+        for _ in range(self._num_inner_steps):
+            loss = F.cross_entropy(predictions, labels)
+            gradients = autograd.grad(loss, parameters.values(), create_graph=train)
+
+            for i, key in enumerate(parameters.keys()):
+                parameters[key] = parameters[key] - inner_lrs[key] * gradients[i]
+
+            predictions = self._forward(images, parameters)
+            accuracies.append(util.score(predictions, labels))
+
         return parameters, accuracies, gradients
 
     def _outer_step(self, task_batch, train):
-        """Computes the MAML loss and metrics on a batch of tasks.
-
-        Args:
-            task_batch (tuple): batch of tasks from an Omniglot DataLoader
-            train (bool): whether we are training or evaluating
-
-        Returns:
-            outer_loss (Tensor): mean MAML loss over the batch, scalar
-            accuracies_support (ndarray): support set accuracy over the
-                course of the inner loop, averaged over the task batch
-                shape (num_inner_steps + 1,)
-            accuracy_query (float): query set accuracy of the adapted
-                parameters, averaged over the task batch
-        """
         outer_loss_batch = []
         accuracies_support_batch = []
         accuracy_query_batch = []
@@ -218,19 +187,16 @@ class MAML:
             labels_support = labels_support.to(self.device)
             images_query = images_query.to(self.device)
             labels_query = labels_query.to(self.device)
-            ### START CODE HERE ###
-            # TODO: finish implementing this method.
-            # For a given task, use the _inner_loop method to adapt for
-            # _num_inner_steps steps, then compute the MAML loss and other
-            # metrics. Reminder you can replace gradients with _ when calling
-            # _inner_loop.
-            # Use F.cross_entropy to compute classification losses.
-            # Use util.score to compute accuracies.
-            # Make sure to populate outer_loss_batch, accuracies_support_batch,
-            # and accuracy_query_batch.
-            # support accuracy: The first element (index 0) should be the accuracy before any steps are taken.
-            
-            ### END CODE HERE ###
+
+            adapted_parameters, inner_loop_accuracies, _ = self._inner_loop(images_support, labels_support, train)
+
+            predictions_query = self._forward(images_query, adapted_parameters)
+            outer_loss = F.cross_entropy(predictions_query, labels_query)
+
+            outer_loss_batch.append(outer_loss)
+            accuracies_support_batch.append(inner_loop_accuracies)
+            accuracy_query_batch.append(util.score(predictions_query, labels_query))
+
         outer_loss = torch.mean(torch.stack(outer_loss_batch))
         accuracies_support = np.mean(
             accuracies_support_batch,
