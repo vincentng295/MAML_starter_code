@@ -14,7 +14,6 @@ from torch import nn
 import torch.nn.functional as F
 from torch import autograd
 from torch.utils import tensorboard
-from google_drive_downloader import GoogleDriveDownloader as gdd
 
 import omniglot
 import util
