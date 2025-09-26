@@ -2,7 +2,6 @@
 import os
 import glob
 
-import google_drive_downloader as gdd
 import imageio
 import numpy as np
 import torch
@@ -54,11 +53,7 @@ class OmniglotDataset(dataset.Dataset):
 
         # if necessary, download the Omniglot dataset
         if not os.path.isdir(self._BASE_PATH):
-            gdd.GoogleDriveDownloader.download_file_from_google_drive(
-                file_id=self._GDD_FILE_ID,
-                dest_path=f'{self._BASE_PATH}.zip',
-                unzip=True
-            )
+            raise Exception("Please the Omniglot dataset")
 
         # get all character folders
         self._character_folders = glob.glob(
